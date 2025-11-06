@@ -7,11 +7,43 @@ authors = [
     { name = "patera", email = "pater4.1127+patera@gmail.com" }
 ]
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "slack-bolt>=1.18.0,<2.0.0",
+    "python-dotenv>=1.0.0,<2.0.0",
+]
 
 [project.scripts]
-slack-agent = "slack_agent:main"
+slack-agent = "slack_agent.bot:main"
 
 [build-system]
 requires = ["uv_build>=0.9.7,<0.10.0"]
 build-backend = "uv_build"
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+exclude = [".venv"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "UP", "B", "SIM"]
+ignore = ["E203"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.mypy]
+python_version = 3.12
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true
+show_error_codes = true
+exclude = [".venv"]
+
+[dependency-groups]
+dev = [
+    "mypy>=1.18.2",
+    "pytest>=8.4.2",
+    "ruff>=0.14.3",
+]
