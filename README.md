@@ -1,6 +1,6 @@
 ## Slack Agent (Skeleton)
 
-Slack の Bot スケルトンです。Bot がメンションされたとき、`hello {受け取ったメッセージ}` を返します。
+Slack の Bot スケルトンです。Bot がメンションされたとき、LangChain のエージェント（OpenAI gpt-4o-mini）で応答を生成し、スレッドに返信します。
 
 ## 前提
 
@@ -24,7 +24,13 @@ uv sync
 
 ```zsh
 cp .env.example .env
-# .env を編集して SLACK_BOT_TOKEN, SLACK_APP_TOKEN を設定
+# .env を編集して以下を設定
+# Slack
+#   SLACK_BOT_TOKEN=xoxb-...
+#   SLACK_APP_TOKEN=xapp-...
+# OpenAI（gpt-4o-mini）
+#   OPENAI_API_KEY=sk-...
+#   OPENAI_MODEL=gpt-4o-mini  # 任意（デフォルト: gpt-4o-mini）
 ```
 
 ### Slack App 設定手順
@@ -52,7 +58,13 @@ uv run slack-agent
 uv run -m slack_agent.bot
 ```
 
-起動後、Slack で Bot にメンションしてメッセージを送ると、`hello {受け取ったメッセージ}` と返信されます。
+起動後、Slack で Bot にメンションしてメッセージを送ると、エージェントの応答がスレッドで返ります。
+
+### OpenAI 利用について
+
+- モデル: `gpt-4o-mini`
+- 予算管理: OpenAI ダッシュボードの Usage limits で月額上限（例: $10）を設定可能
+- プライバシー: API経由のデータは学習に使用されません
 
 ### スレッド返信仕様
 

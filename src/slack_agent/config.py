@@ -31,3 +31,30 @@ class SlackSettings:
             raise RuntimeError("SLACK_APP_TOKEN が設定されていません")
 
         return SlackSettings(bot_token=bot, app_token=app)
+
+
+@dataclass(frozen=True)
+class OpenAISettings:
+    api_key: str
+    model: str
+
+    @staticmethod
+    def from_env() -> OpenAISettings:
+        """環境変数から設定値を読み込みます。
+
+        必須の環境変数:
+        - OPENAI_API_KEY: OpenAI API キー
+
+        オプションの環境変数:
+        - OPENAI_MODEL: 使用するモデル（デフォルト: gpt-4o-mini）
+        """
+        # .env が存在する場合は読み込む
+        load_dotenv()
+
+        api_key = os.getenv("OPENAI_API_KEY")
+        model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+
+        if not api_key:
+            raise RuntimeError("OPENAI_API_KEY が設定されていません")
+
+        return OpenAISettings(api_key=api_key, model=model)

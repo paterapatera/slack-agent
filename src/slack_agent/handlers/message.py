@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 from collections.abc import Mapping
 from typing import Any
@@ -7,6 +8,7 @@ from typing import Any
 from slack_bolt import App
 from slack_bolt.context.say.say import Say
 
+from ..agent import invoke_agent
 from ..text import clean_mention_text
 
 
@@ -27,5 +29,18 @@ def register(app: App) -> None:
             cleaned,
             thread_ts,
         )
-        # say() に thread_ts を渡すことでスレッド内に返信
-        say(f"hello {cleaned}", thread_ts=thread_ts)
+
+        try:
+            # エージェントに質問を投げて応答を取得
+            # asyncio.run() で非同期関数を同期的に実行
+            answer = asyncio.run(invoke_agent(cleaned))
+            logger.info("Agent answer: %r", answer)
+
+            # 応答をスレッドに返信
+            say(answer, thread_ts=thread_ts)
+
+        except Exception as e:
+            # エラーハンドリング: ユーザーフレンドリーなメッセージを返信
+            error_message = f"申し訳ありません。エラーが発生しました: {e}"
+            logger.error("Error invoking agent: %s", e, exc_info=True)
+            say(error_message, thread_ts=thread_ts)

@@ -80,6 +80,7 @@
   - Slack App設定手順
   - スレッド返信仕様
   - テスト/ lint 実行方法
+  - OpenAI設定手順（OPENAI_API_KEY / gpt-4o-mini / 予算上限）
 - src/slack_agent/handlers/message.py.exp.md
   - スレッド返信の実装仕様
   - clean_mention_text関数の利用箇所・仕様
@@ -88,6 +89,10 @@
   - 利用箇所一覧
 - src/slack_agent/bot.py.exp.md / src/slack_agent/config.py.exp.md
   - ログ出力・スレッド返信仕様の関連
+  - OpenAISettings の説明追記
+- src/slack_agent/agent.py.exp.md（新規）
+  - Agents API（create_agent）によるエージェント構築と応答取得
+  - get_agent_graph / invoke_agent の仕様
 - AGENTS.md
   - Phase 4更新方針（この内容）
 - story/ユーザーはSlackでBotにメッセージを送信できる.md

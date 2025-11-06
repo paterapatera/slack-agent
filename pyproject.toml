@@ -10,6 +10,9 @@ requires-python = ">=3.12"
 dependencies = [
     "slack-bolt>=1.18.0,<2.0.0",
     "python-dotenv>=1.0.0,<2.0.0",
+    "langchain-core>=1.0.3",
+    "langchain-openai>=1.0.2",
+    "langchain>=1.0.4",
 ]
 
 [project.scripts]
@@ -45,5 +48,6 @@ exclude = [".venv"]
 dev = [
     "mypy>=1.18.2",
     "pytest>=8.4.2",
+    "pytest-asyncio>=1.2.0",
     "ruff>=0.14.3",
 ]
