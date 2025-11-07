@@ -27,7 +27,10 @@ def get_agent_graph() -> Any:
     llm = ChatOpenAI(model=settings.model, api_key=SecretStr(settings.api_key), temperature=0.7)
 
     # System プロンプト（Slack向けに簡潔に）
-    system_prompt = "You are a helpful assistant. Answer concisely for Slack replies."
+    system_prompt = (
+        "Slackの返信には簡潔に答えてください。"
+        "semche_searchを使うと社内技術情報の検索ができます。"
+    )
 
     # Semche search ツールを LangChain の Tool としてラップ
     try:

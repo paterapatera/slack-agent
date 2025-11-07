@@ -7,7 +7,7 @@ Slack の Bot スケルトンです。Bot がメンションされたとき、La
 - Python 3.12+
 - Slack App を作成済み（Bot ユーザー有効）
 - Socket Mode を有効化済み
-- Bot Token Scopes: `app_mentions:read`, `chat:write`
+- Bot Token Scopes: `app_mentions:read`, `chat:write`, `reactions:write`
 
 ## セットアップ（uv）
 
@@ -40,12 +40,13 @@ cp .env.example .env
 3. OAuth & Permissions で以下のスコープを追加
    - `app_mentions:read`
    - `chat:write`
+   - `reactions:write`
 4. Socket Mode を有効化
 5. App Token（`xapp-...`）と Bot Token（`xoxb-...`）を発行
 6. `.env` に下記を記載
    - `SLACK_BOT_TOKEN=xoxb-...`
    - `SLACK_APP_TOKEN=xapp-...`
-7. App をワークスペースにインストール
+7. App をワークスペースにインストール（スコープ追加後は再インストール）
 
 ## 実行
 
@@ -70,6 +71,8 @@ uv run -m slack_agent.bot
 
 - Botはメンションイベント受信時、元メッセージの `thread_ts` を参照し、同一スレッド内で返信します。
 - スレッド外からメンションされた場合は、そのメッセージを起点に新規スレッドとして返信します。
+- **応答生成の前に、受信メッセージへ :eyes: リアクションを付与して「処理中」であることを可視化します。**
+  - リアクション付与が失敗しても（`missing_scope` / `already_reacted` / `ratelimited` など）応答処理は継続します。
 - 実装は `src/slack_agent/handlers/message.py` の `app_mention` ハンドラで行っています。
 
 ### Semche MCP 連携（検索ツール）

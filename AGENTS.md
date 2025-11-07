@@ -72,17 +72,19 @@
 
 ---
 
-## Phase 4: ドキュメント更新方針（2025/11/07追記）
+## Phase 4: ドキュメント更新方針（2025/11/07追記、2025/11/08更新）
 
 ### Phase 4 で更新するドキュメント一覧
 
 - README.md
-  - Slack App設定手順
-  - スレッド返信仕様
+  - Slack App設定手順（`reactions:write` スコープ追加含む）
+  - スレッド返信仕様（:eyes: リアクション付与の説明含む）
   - テスト/ lint 実行方法
   - OpenAI設定手順（OPENAI_API_KEY / gpt-5-nano / 予算上限）
 - src/slack_agent/handlers/message.py.exp.md
   - スレッド返信の実装仕様
+  - :eyes: リアクション付与の仕様（`_try_add_eyes_reaction`）
+  - エラーハンドリング（already_reacted/missing_scope/ratelimited）
   - clean_mention_text関数の利用箇所・仕様
 - src/slack_agent/text.py.exp.md
   - clean_mention_text関数の仕様
@@ -95,12 +97,12 @@
   - get_agent_graph / invoke_agent の仕様
 - AGENTS.md
   - Phase 4更新方針（この内容）
-- story/ユーザーはSlackでBotにメッセージを送信できる.md
+- story/\*.md
   - Phase4のチェック済み項目更新（exp/README/AGENTS）
 
 ### ドキュメント反映方針
 
 - すべてのexp.mdはコードファイルと同じパスに配置し、関数仕様・利用箇所・関連クラスファイルパスを明記する
-- READMEは実行手順・Slack App設定・テスト/静的解析方法・スレッド返信仕様を日本語で記載する
+- READMEは実行手順・Slack App設定・テスト/静的解析方法・スレッド返信仕様（:eyes: リアクション含む）を日本語で記載する
 - AGENTS.mdは各フェーズの更新方針を記録する
 - storyは進捗状況（Phase4チェック）を反映する

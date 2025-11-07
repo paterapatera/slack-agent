@@ -8,6 +8,20 @@ from typing import Any
 from slack_bolt import App
 from slack_bolt.context.say.say import Say
 
+try:  # slack_sdk は slack-bolt 依存に含まれる想定。万一未導入でも処理継続できるようフォールバック。
+    from slack_sdk.errors import SlackApiError
+except Exception:  # pragma: no cover - インポート失敗はまれ
+    class SlackApiError(Exception):  # type: ignore
+        """フォールバック: SlackApiError が未インポート時の簡易例外クラス"""
+
+        def __init__(
+            self,
+            message: str = "SlackApiError fallback",
+            response: dict[str, Any] | None = None,
+        ):
+            super().__init__(message)
+            self.response = response or {}
+
 from ..agent import invoke_agent
 from ..text import clean_mention_text
 
@@ -15,6 +29,31 @@ from ..text import clean_mention_text
 def register(app: App) -> None:
     """`app_mention` イベントのハンドラーを登録します。"""
     logger = logging.getLogger("slack_agent.handlers.message")
+
+    def _try_add_eyes_reaction(app: App, event: Mapping[str, Any]) -> None:
+        """対象メッセージに :eyes: リアクションを付与（失敗しても処理は継続）。"""
+        channel = event.get("channel")
+        ts = event.get("ts")
+        if not channel or not ts:
+            logger.debug("Skip adding reaction: missing channel/ts in event")
+            return
+        try:
+            app.client.reactions_add(channel=channel, name="eyes", timestamp=ts)
+            logger.info(":eyes: reaction added channel=%s ts=%s", channel, ts)
+        except SlackApiError as e:  # pragma: no cover - 詳細分岐は別テストでモック
+            err = e.response.get("error") if hasattr(e, "response") else None
+            if err == "already_reacted":
+                logger.info("Reaction already exists for channel=%s ts=%s", channel, ts)
+            elif err == "missing_scope":
+                logger.warning("Cannot add reaction (missing_scope) channel=%s ts=%s", channel, ts)
+            elif err == "ratelimited":
+                logger.warning("Rate limited adding reaction channel=%s ts=%s", channel, ts)
+            else:
+                logger.warning(
+                    "Failed to add :eyes: reaction err=%s channel=%s ts=%s", err, channel, ts
+                )
+        except Exception as e:
+            logger.warning("Unexpected error adding reaction: %s", e)
 
     @app.event("app_mention")
     def handle_app_mention(event: Mapping[str, Any], say: Say) -> None:
@@ -29,6 +68,9 @@ def register(app: App) -> None:
             cleaned,
             thread_ts,
         )
+
+        # 応答生成前に :eyes: リアクションを追加して「処理中」であることを可視化
+        _try_add_eyes_reaction(app, event)
 
         try:
             # エージェントに質問を投げて応答を取得
