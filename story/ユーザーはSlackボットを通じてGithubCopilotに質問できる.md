@@ -19,12 +19,12 @@
 
 **アーキテクチャ概要**
 
-LangChainのエージェント機能を使用し、OpenAI gpt-4o-miniをLLMとして統合します。将来的にはMCP（Model Context Protocol）にも対応できる設計にします。
+LangChainのエージェント機能を使用し、OpenAI gpt-5-nanoをLLMとして統合します。将来的にはMCP（Model Context Protocol）にも対応できる設計にします。
 
 **技術スタック**
 
 - **LangChain**: エージェント機能、LLM統合フレームワーク
-- **OpenAI API (gpt-4o-mini)**: LLMプロバイダー
+- **OpenAI API (gpt-5-nano)**: LLMプロバイダー
 - **予算管理**: 月$10の上限設定
 
 **実装詳細**
@@ -38,12 +38,12 @@ LangChainのエージェント機能を使用し、OpenAI gpt-4o-miniをLLMと�
 
    ```
    OPENAI_API_KEY=sk-xxx  # OpenAI APIキー
-   OPENAI_MODEL=gpt-4o-mini  # 使用するモデル（デフォルト）
+   OPENAI_MODEL=gpt-5-nano  # 使用するモデル（デフォルト）
    ```
 
 3. **新規モジュールの作成**
    - `src/slack_agent/agent.py`: LangChainエージェントの初期化・実行ロジック
-     - `ChatOpenAI`をLLMとして設定（gpt-4o-mini）
+     - `ChatOpenAI`をLLMとして設定（gpt-5-nano）
      - エージェント構築（将来的にツール追加可能）
      - 将来のMCP対応を考慮した設計
 
@@ -89,7 +89,7 @@ LangChainのエージェント機能を使用し、OpenAI gpt-4o-miniをLLMと�
 
 **使用するモデル**
 
-- **gpt-4o-mini**: 高速・安価・高品質なバランス型モデル
+- **gpt-5-nano**: 高速・安価・高品質なバランス型モデル
 - APIデータは学習に使用されない（OpenAI ポリシー）
 
 **将来のMCP対応**

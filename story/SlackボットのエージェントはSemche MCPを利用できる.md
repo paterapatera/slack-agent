@@ -24,7 +24,7 @@ SlackでBotにメンションされた内容をLangChainエージェントへ渡
 - 接続方式はローカル実行体（stdin/stdout でのMCPセッション、サブプロセス起動）のみを利用する（URL接続は使用しない）。
 - 推奨の起動コマンド（例・Semche MCPのワークスペース直下で実行）: `uv run python src/semche/mcp_server.py`
 - 認証や接続は環境変数（例: `MCP_SEMCHE_PATH`）で行う。
-- BotのLLMはOpenAI gpt-4o-mini（既存方針）を継続利用し、LangChain Agents（`create_agent`）にSemcheツールを渡して、ツール呼び出しはモデルの判断に委ねる。
+- BotのLLMはOpenAI gpt-5-nano（既存方針）を継続利用し、LangChain Agents（`create_agent`）にSemcheツールを渡して、ツール呼び出しはモデルの判断に委ねる。
 
 #### 実現案
 
@@ -38,7 +38,7 @@ SlackでBotにメンションされた内容をLangChainエージェントへ渡
 **技術スタック**
 
 - LangChain Agents（`create_agent`）
-- OpenAI gpt-4o-mini（既存）
+- OpenAI gpt-5-nano（既存）
 - MCPクライアント（Python）: Semche MCPへローカルサブプロセス（stdio）/ または TCP/HTTP/WS 等で接続（クライアント実装は採用するMCPクライアントに依存）
 
 **実装詳細（計画）**

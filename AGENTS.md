@@ -80,7 +80,7 @@
   - Slack App設定手順
   - スレッド返信仕様
   - テスト/ lint 実行方法
-  - OpenAI設定手順（OPENAI_API_KEY / gpt-4o-mini / 予算上限）
+  - OpenAI設定手順（OPENAI_API_KEY / gpt-5-nano / 予算上限）
 - src/slack_agent/handlers/message.py.exp.md
   - スレッド返信の実装仕様
   - clean_mention_text関数の利用箇所・仕様

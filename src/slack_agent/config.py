@@ -46,13 +46,13 @@ class OpenAISettings:
         - OPENAI_API_KEY: OpenAI API キー
 
         オプションの環境変数:
-        - OPENAI_MODEL: 使用するモデル（デフォルト: gpt-4o-mini）
+        - OPENAI_MODEL: 使用するモデル（デフォルト: gpt-5-nano）
         """
         # .env が存在する場合は読み込む
         load_dotenv()
 
         api_key = os.getenv("OPENAI_API_KEY")
-        model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+        model = os.getenv("OPENAI_MODEL", "gpt-5-nano")
 
         if not api_key:
             raise RuntimeError("OPENAI_API_KEY が設定されていません")

@@ -1,6 +1,6 @@
 # agent.py の説明
 
-LangChain Agents API（`create_agent`）を用いて、Slack 応答用のエージェントグラフを構築・呼び出すモジュールです。OpenAI gpt-4o-mini を利用し、必要に応じて Semche の検索ツールを呼び出せるようにツールを登録します。
+LangChain Agents API（`create_agent`）を用いて、Slack 応答用のエージェントグラフを構築・呼び出すモジュールです。OpenAI gpt-5-nano を利用し、必要に応じて Semche の検索ツールを呼び出せるようにツールを登録します。
 
 ## 主な関数
 

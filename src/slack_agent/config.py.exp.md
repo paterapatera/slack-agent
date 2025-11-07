@@ -11,9 +11,9 @@
 
 - OpenAISettings クラス（dataclass）
   - `api_key`: OpenAI API キー（`OPENAI_API_KEY`）
-  - `model`: 使用モデル名（`OPENAI_MODEL`、デフォルト: `gpt-4o-mini`）
+  - `model`: 使用モデル名（`OPENAI_MODEL`、デフォルト: `gpt-5-nano`）
   - `from_env()`: `.env` を読み込み（存在すれば）、必須・任意の環境変数から `OpenAISettings` を構築
-  - 備考: コスト配慮のためデフォルトは `gpt-4o-mini`。必要に応じて `.env` に `OPENAI_MODEL` を設定して切替可能です。予算上限は OpenAI ダッシュボードの Usage limits で管理してください。
+  - 備考: コスト配慮のためデフォルトは `gpt-5-nano`。必要に応じて `.env` に `OPENAI_MODEL` を設定して切替可能です。予算上限は OpenAI ダッシュボードの Usage limits で管理してください。
 
 ## 入出力
 

@@ -1,6 +1,6 @@
 ## Slack Agent (Skeleton)
 
-Slack の Bot スケルトンです。Bot がメンションされたとき、LangChain のエージェント（OpenAI gpt-4o-mini）で応答を生成し、スレッドに返信します。
+Slack の Bot スケルトンです。Bot がメンションされたとき、LangChain のエージェント（OpenAI gpt-5-nano）で応答を生成し、スレッドに返信します。
 
 ## 前提
 
@@ -28,9 +28,9 @@ cp .env.example .env
 # Slack
 #   SLACK_BOT_TOKEN=xoxb-...
 #   SLACK_APP_TOKEN=xapp-...
-# OpenAI（gpt-4o-mini）
+# OpenAI（gpt-5-nano）
 #   OPENAI_API_KEY=sk-...
-#   OPENAI_MODEL=gpt-4o-mini  # 任意（デフォルト: gpt-4o-mini）
+#   OPENAI_MODEL=gpt-5-nano  # 任意（デフォルト: gpt-5-nano）
 ```
 
 ### Slack App 設定手順
@@ -62,7 +62,7 @@ uv run -m slack_agent.bot
 
 ### OpenAI 利用について
 
-- モデル: `gpt-4o-mini`
+- モデル: `gpt-5-nano`
 - 予算管理: OpenAI ダッシュボードの Usage limits で月額上限（例: $10）を設定可能
 - プライバシー: API経由のデータは学習に使用されません
 
@@ -77,15 +77,15 @@ uv run -m slack_agent.bot
 本プロジェクトのエージェントは、必要に応じて Semche MCP の検索ツールを呼び出せます（ローカル stdio 接続のみ想定）。
 
 - 前提
-   - Semche MCP のワークスペースがローカルにある（例: `/path/to/semche`）
-   - Semche 側の検索対象ドキュメントは事前にインデックス化済み
+  - Semche MCP のワークスペースがローカルにある（例: `/path/to/semche`）
+  - Semche 側の検索対象ドキュメントは事前にインデックス化済み
 - サーバー起動（参考）
-   - ワークスペース直下で次を実行: `uv run python src/semche/mcp_server.py`
+  - ワークスペース直下で次を実行: `uv run python src/semche/mcp_server.py`
 - プロジェクト側の環境変数（`.env`）
-   - `MCP_SEMCHE_PATH=/path/to/semche`  # 必須（サーバーのワークスペースパス）
-   - `MCP_SEMCHE_TIMEOUT=10`           # 任意（秒）
-   - `SEMCHE_CHROMA_DIR=/path/to/semche/chroma_db`  # 任意（サーバーに引き渡す）
-   - `SEMCHE_MOCK=1`                  # 任意（開発/CI向けのモック応答）
+  - `MCP_SEMCHE_PATH=/path/to/semche` # 必須（サーバーのワークスペースパス）
+  - `MCP_SEMCHE_TIMEOUT=10` # 任意（秒）
+  - `SEMCHE_CHROMA_DIR=/path/to/semche/chroma_db` # 任意（サーバーに引き渡す）
+  - `SEMCHE_MOCK=1` # 任意（開発/CI向けのモック応答）
 
 注意: 本プロジェクトは stdio のみ対応（URL/TCP/WS は未対応）。
 
