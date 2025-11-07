@@ -72,6 +72,25 @@ uv run -m slack_agent.bot
 - スレッド外からメンションされた場合は、そのメッセージを起点に新規スレッドとして返信します。
 - 実装は `src/slack_agent/handlers/message.py` の `app_mention` ハンドラで行っています。
 
+### Semche MCP 連携（検索ツール）
+
+本プロジェクトのエージェントは、必要に応じて Semche MCP の検索ツールを呼び出せます（ローカル stdio 接続のみ想定）。
+
+- 前提
+   - Semche MCP のワークスペースがローカルにある（例: `/path/to/semche`）
+   - Semche 側の検索対象ドキュメントは事前にインデックス化済み
+- サーバー起動（参考）
+   - ワークスペース直下で次を実行: `uv run python src/semche/mcp_server.py`
+- プロジェクト側の環境変数（`.env`）
+   - `MCP_SEMCHE_PATH=/path/to/semche`  # 必須（サーバーのワークスペースパス）
+   - `MCP_SEMCHE_TIMEOUT=10`           # 任意（秒）
+   - `SEMCHE_CHROMA_DIR=/path/to/semche/chroma_db`  # 任意（サーバーに引き渡す）
+   - `SEMCHE_MOCK=1`                  # 任意（開発/CI向けのモック応答）
+
+注意: 本プロジェクトは stdio のみ対応（URL/TCP/WS は未対応）。
+
+内部実装の概要は `src/slack_agent/mcp/semche.py.exp.md` および `src/slack_agent/tools/semche.py.exp.md` を参照してください。
+
 ### （任意）開発ツールの導入例
 
 ```zsh

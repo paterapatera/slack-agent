@@ -167,11 +167,11 @@ SlackでBotにメンションされた内容をLangChainエージェントへ渡
 
 ### Phase 4: ドキュメント化【ドキュメント更新フェーズ】(上から順にチェックしてください)
 
-- [ ] 実装内容（`*.exp.md`）を更新する（`mcp/semche.py.exp.md` / `tools/semche.py.exp.md` / `agent.py.exp.md`追記）
-- [ ] README.md、AGENTS.md を更新する（MCP設定手順/仕様追記）
+- [x] 実装内容（`*.exp.md`）を更新する（`mcp/semche.py.exp.md` / `tools/semche.py.exp.md` / `agent.py.exp.md`追記）
+- [x] README.md、AGENTS.md を更新する（MCP設定手順/仕様追記）
 
 ### Phase 5: コミット・プッシュ【最終フェーズ】(上から順にチェックしてください)
 
-- [ ] コードのコミットメッセージを作成する
-- [ ] **ユーザーからコミットメッセージの承認を受ける**
-- [ ] コミット・プッシュする
+- [x] コードのコミットメッセージを作成する
+- [x] **ユーザーからコミットメッセージの承認を受ける**
+- [x] コミット・プッシュする
