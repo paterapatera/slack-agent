@@ -11,6 +11,7 @@ from langchain_openai import ChatOpenAI
 from pydantic import SecretStr
 
 from .config import OpenAISettings
+from .tools.semche import semche_search
 
 logger = logging.getLogger(__name__)
 
@@ -28,8 +29,39 @@ def get_agent_graph() -> Any:
     # System プロンプト（Slack向けに簡潔に）
     system_prompt = "You are a helpful assistant. Answer concisely for Slack replies."
 
-    # tools は未使用
-    tools = None
+    # Semche search ツールを LangChain の Tool としてラップ
+    try:
+        # 互換のために agents.Tool を参照（存在しない場合は AttributeError）
+        tool_cls = lc_agents.Tool  # type: ignore[attr-defined]
+
+        def _semche_wrapper(
+            query: str,
+            top_k: int = 5,
+            file_type: str | None = None,
+            include_documents: bool | None = True,
+            max_content_length: int | None = None,
+        ) -> Any:
+            return semche_search(
+                query=query,
+                top_k=top_k,
+                file_type=file_type,
+                include_documents=include_documents,
+                max_content_length=max_content_length,
+            )
+
+        semche_tool = tool_cls(
+            name="semche_search",
+            func=_semche_wrapper,
+            description=(
+                "Semche hybrid search (Dense + BM25). "
+                "Args: query (str), top_k (int, default 5), file_type (str|None), "
+                "include_documents (bool, default True), max_content_length (int|None)."
+            ),
+        )
+        tools = [semche_tool]
+    except Exception:
+        # Tool が見つからない場合はツール無しで起動（フォールバック）
+        tools = None
 
     graph: Any = create_agent(model=llm, tools=tools, system_prompt=system_prompt)
     logger.info("Agent graph created with model=%s", settings.model)

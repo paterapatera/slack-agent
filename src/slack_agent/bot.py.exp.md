@@ -7,6 +7,11 @@ Slack Bolt アプリケーションを構築し Socket Mode で起動するエ�
 - `build_app()`: 環境変数からトークンを読み込み `App` を生成し、ハンドラー登録を行う。
 - `main()`: `SocketModeHandler` を使ってアプリを開始。
 
+## ログ出力とスレッド返信との関係
+
+- `main()` の冒頭で `logging.basicConfig(level=INFO, format=...)` を設定し、以降のモジュール（例: `handlers.message`, `agent`）のログを集約します。
+- スレッドへの返信そのものは `handlers/message.py` 側で `say(..., thread_ts=...)` により実施されます。本モジュールは起動とログ初期化を担当します。
+
 ## 依存
 
 - `SlackSettings`: `src/slack_agent/config.py`

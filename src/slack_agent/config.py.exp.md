@@ -13,6 +13,7 @@
   - `api_key`: OpenAI API キー（`OPENAI_API_KEY`）
   - `model`: 使用モデル名（`OPENAI_MODEL`、デフォルト: `gpt-4o-mini`）
   - `from_env()`: `.env` を読み込み（存在すれば）、必須・任意の環境変数から `OpenAISettings` を構築
+  - 備考: コスト配慮のためデフォルトは `gpt-4o-mini`。必要に応じて `.env` に `OPENAI_MODEL` を設定して切替可能です。予算上限は OpenAI ダッシュボードの Usage limits で管理してください。
 
 ## 入出力
 
@@ -23,6 +24,11 @@
 ## 依存
 
 - `python-dotenv`: `.env` の読み込みに使用
+
+## ログ出力・スレッド返信仕様との関連
+
+- 本モジュールは設定の読み出しのみを担当し、ログやスレッド返信の直接制御は行いません。
+- ログの初期化は `src/slack_agent/bot.py`、スレッド返信は `src/slack_agent/handlers/message.py` が担当します。
 
 ## コード内で利用しているクラスのファイルパス一覧
 
