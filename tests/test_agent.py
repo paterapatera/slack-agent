@@ -22,7 +22,10 @@ class _FakeGraph:
 
 @pytest.mark.asyncio
 async def test_invoke_agent_returns_last_ai_message(monkeypatch: MonkeyPatch) -> None:
-    monkeypatch.setattr(agent_mod, "get_agent_graph", lambda: _FakeGraph())
+    async def _fake_get_agent_graph() -> _FakeGraph:  # type: ignore[override]
+        return _FakeGraph()
+
+    monkeypatch.setattr(agent_mod, "get_agent_graph", _fake_get_agent_graph)
 
     result = await agent_mod.invoke_agent("hello")
 

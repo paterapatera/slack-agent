@@ -75,24 +75,43 @@ uv run -m slack_agent.bot
   - リアクション付与が失敗しても（`missing_scope` / `already_reacted` / `ratelimited` など）応答処理は継続します。
 - 実装は `src/slack_agent/handlers/message.py` の `app_mention` ハンドラで行っています。
 
-### Semche MCP 連携（検索ツール）
+### Semche MCP 連携（検索ツール自動ロード）
 
-本プロジェクトのエージェントは、必要に応じて Semche MCP の検索ツールを呼び出せます（ローカル stdio 接続のみ想定）。
+エージェントは MCP（Model Context Protocol）経由で Semche の検索・リストなどのツール群を **自動ロード** して利用します。初回呼び出し時に stdio 接続でサーバーを起動し、ツール一覧を LangChain Tool に変換して登録します。2 回目以降はキャッシュを使用し再接続しません。
 
-- 前提
-  - Semche MCP のワークスペースがローカルにある（例: `/path/to/semche`）
-  - Semche 側の検索対象ドキュメントは事前にインデックス化済み
-- サーバー起動（参考）
-  - ワークスペース直下で次を実行: `uv run python src/semche/mcp_server.py`
-- プロジェクト側の環境変数（`.env`）
-  - `MCP_SEMCHE_PATH=/path/to/semche` # 必須（サーバーのワークスペースパス）
-  - `MCP_SEMCHE_TIMEOUT=10` # 任意（秒）
-  - `SEMCHE_CHROMA_DIR=/path/to/semche/chroma_db` # 任意（サーバーに引き渡す）
-  - `SEMCHE_MOCK=1` # 任意（開発/CI向けのモック応答）
+#### 必須/任意の環境変数（`.env`）
 
-注意: 本プロジェクトは stdio のみ対応（URL/TCP/WS は未対応）。
+| 変数                 | 必須 | 説明                                                                               |
+| -------------------- | ---- | ---------------------------------------------------------------------------------- |
+| `MCP_SEMCHE_PATH`    | ✅   | Semche リポジトリのルートディレクトリ（例: `/path/to/semche`）。ディレクトリ必須。 |
+| `MCP_SEMCHE_TIMEOUT` | 任意 | 接続・ツール取得のタイムアウト秒（デフォルト 10）。                                |
+| `SEMCHE_CHROMA_DIR`  | 任意 | Semche サーバプロセスへ引き渡す Chroma DB ディレクトリ。                           |
 
-内部実装の概要は `src/slack_agent/mcp/semche.py.exp.md` および `src/slack_agent/tools/semche.py.exp.md` を参照してください。
+#### 起動方法（内部）
+
+- `uv run --directory <MCP_SEMCHE_PATH> python src/semche/mcp_server.py` を使用し stdio セッションを開始
+- `langchain_mcp_adapters.tools.load_mcp_tools` で MCP 側ツールを LangChain Tool オブジェクトへ変換
+- タイムアウトは `safe_timeout = max(1, MCP_SEMCHE_TIMEOUT)` に正規化
+
+#### エラー仕様（フォールバック無し）
+
+| 条件                                                | 例外         | ログメッセージ例                                   |
+| --------------------------------------------------- | ------------ | -------------------------------------------------- |
+| `MCP_SEMCHE_PATH` 未設定                            | RuntimeError | `MCP_SEMCHE_PATH が未設定`                         |
+| `MCP_SEMCHE_PATH` がディレクトリでない              | RuntimeError | `MCP_SEMCHE_PATH はディレクトリを指定してください` |
+| サーバスクリプト不存在 (`src/semche/mcp_server.py`) | RuntimeError | `MCP サーバースクリプトが見つかりません`           |
+| アダプタ未導入 (`langchain_mcp_adapters`)           | RuntimeError | `langchain_mcp_adapters が見つかりません`          |
+| セッション初期化/ツール取得失敗                     | RuntimeError | `MCP ツールの自動ロードに失敗しました`             |
+| ツール 0 件                                         | RuntimeError | `MCP から取得できるツールが 0 件でした`            |
+
+フォールバックとして手動定義ツールへ切り替える処理はありません。起動は失敗として扱われます。
+
+#### 注意
+
+- 現状 stdio 接続のみ対応（URL/TCP/WebSocket 未対応）
+- 接続はプロセス内で 1 回のみ行われます（メモ化）
+
+内部実装の詳細は `src/slack_agent/agent.py.exp.md` を参照してください。
 
 ### （任意）開発ツールの導入例
 
@@ -101,7 +120,7 @@ uv run -m slack_agent.bot
 uv add --dev ruff mypy
 
 # 実行
-uv run ruff check .
+uv run ruff check . --fix
 uv run mypy src
 ```
 
@@ -116,7 +135,7 @@ uv run pytest
 ### Lint（ruff）
 
 ```zsh
-uv run ruff check .
+uv run ruff check . --fix
 ```
 
 ### 型チェック（mypy）
