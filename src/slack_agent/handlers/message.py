@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import asyncio
 import atexit
+import contextlib
 import logging
 import threading
-from collections.abc import Mapping
-from typing import Any, Awaitable, Callable, TypeVar
+from collections.abc import Coroutine, Mapping
+from concurrent.futures import Future
+from typing import Any, TypeVar
 
 from slack_bolt import App
 from slack_bolt.context.say.say import Say
@@ -26,7 +28,6 @@ except Exception:  # pragma: no cover - インポート失敗はまれ
 
 from ..agent import invoke_agent
 from ..text import clean_mention_text
-
 
 # --- 背景イベントループ（永続）で非同期関数を実行する仕組み ------------------------
 # Slack Bolt の同期ハンドラー内で asyncio.run() を使うと、処理後にイベントループが
@@ -55,10 +56,8 @@ def _start_background_loop() -> None:
             loop.run_forever()
         finally:
             # ループ停止時のクローズ
-            try:
+            with contextlib.suppress(Exception):
                 loop.close()
-            except Exception:  # noqa: BLE001
-                pass
 
     t = threading.Thread(target=_runner, name="slack-agent-bg-loop", daemon=True)
     _bg_thread = t
@@ -85,12 +84,12 @@ atexit.register(_stop_background_loop)
 T = TypeVar("T")
 
 
-def _run_in_background(coro: Awaitable[T]) -> T:
+def _run_in_background(coro: Coroutine[Any, Any, T]) -> T:  # noqa: UP047 - 単純な汎用同期ヘルパ
     """永続イベントループでコルーチンを同期的に実行して結果を返す。"""
     if _bg_loop is None:
         _start_background_loop()
     assert _bg_loop is not None  # for type checker
-    fut = asyncio.run_coroutine_threadsafe(coro, _bg_loop)
+    fut: Future[T] = asyncio.run_coroutine_threadsafe(coro, _bg_loop)
     return fut.result()
 
 

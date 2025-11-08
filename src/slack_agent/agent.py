@@ -239,7 +239,11 @@ async def get_agent_graph() -> Any:
 
         system_prompt = (
             "Slackの返信には簡潔に答えてください。"
-            "必要に応じて MCP ツールを利用して補助作業を行ってください。"
+            "必要に応じて MCP ツール（Semche の検索など）を利用してください。"
+            "社内情報(仕様/コード/ドキュメント)や社内業務情報に関する質問では検索ツールの利用を検討。"
+            "公開一般や基礎的質問ではツールを使わず直接回答。"
+            "検索ツール利用時は include_documents=True, max_content_length=None (全文取得) を推奨。"
+            "取得本文は要約・引用で必要部分のみ提示。"
         )
 
         tools = await load_mcp_tools_once()

@@ -64,10 +64,11 @@ SlackでBotにメンションされた内容をLangChainエージェントへ渡
      - Semche MCPクライアントの薄いラッパー
      - `get_client()` / `search(query: str, top_k: int | None = 5, file_type: str | None = None, include_documents: bool | None = True, max_content_length: int | None = None) -> dict` / （任意）`health()`
    - 例外を`RuntimeError`に正規化して上位で扱いやすく
-   - `src/slack_agent/tools/semche.py`
-   - LangChainツール定義（`@tool`や`StructuredTool`）
-     - Semcheラッパーの `search` を呼び出す（本機能では検索のみツール化）
-     - ツール引数は上記検索パラメータに準拠（`query` 必須。他は任意）
+
+- (旧) `src/slack_agent/tools/semche.py` ※ 現在は MCP 自動ロード化に伴い削除済み
+- LangChainツール定義（`@tool`や`StructuredTool`）
+  - Semcheラッパーの `search` を呼び出す（本機能では検索のみツール化）
+  - ツール引数は上記検索パラメータに準拠（`query` 必須。他は任意）
 
 4. エージェントの拡張（`src/slack_agent/agent.py`）
 
@@ -151,7 +152,7 @@ SlackでBotにメンションされた内容をLangChainエージェントへ渡
 - [x] 依存関係の選定・追加（MCPクライアント）
 - [x] 環境変数の定義（`.env.example`追記含む）
 - [x] `src/slack_agent/mcp/semche.py` を実装
-- [x] `src/slack_agent/tools/semche.py` を実装（LangChainツール）
+- [x] (旧) `src/slack_agent/tools/semche.py` を実装（後に MCP 自動ロードへ移行し削除）
 - [x] `src/slack_agent/agent.py` にツールを組み込み（`create_agent`に渡す）
 - [x] エラーハンドリング/ログ調整
 - [x] Lint（ruff check . --fix）/ 型チェック（mypy）が通る
@@ -167,7 +168,7 @@ SlackでBotにメンションされた内容をLangChainエージェントへ渡
 
 ### Phase 4: ドキュメント化【ドキュメント更新フェーズ】(上から順にチェックしてください)
 
-- [x] 実装内容（`*.exp.md`）を更新する（`mcp/semche.py.exp.md` / `tools/semche.py.exp.md` / `agent.py.exp.md`追記）
+- [x] 実装内容（`*.exp.md`）を更新する（`mcp/semche.py.exp.md` / ~~`tools/semche.py.exp.md`~~ / `agent.py.exp.md` 追記）
 - [x] README.md、AGENTS.md を更新する（MCP設定手順/仕様追記）
 
 ### Phase 5: コミット・プッシュ【最終フェーズ】(上から順にチェックしてください)

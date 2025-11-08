@@ -55,7 +55,7 @@
 
 ### Phase 5: コミット・プッシュ【最終フェーズ】(上から順にチェックしてください)
 
-- [ ] コードのコミットメッセージを作成する
+- [ ] コードのコミットメッセージ(日本語)を作成する
 - [ ] **ユーザーからコミットメッセージの承認を受ける**
 - ストーリーにチェック後にコミット・プッシュする
 ```
@@ -83,6 +83,7 @@
   - テスト/ lint 実行方法
   - OpenAI設定手順（OPENAI_API_KEY / gpt-5-nano / 予算上限）
   - MCP ツール自動ロード仕様（`MCP_SEMCHE_PATH` ディレクトリ必須 / `uv --directory <path> python src/semche/mcp_server.py` 起動 / timeout 正規化 / フォールバック無し / エラー一覧表記）
+  - Semche 検索利用ポリシー
 - src/slack_agent/handlers/message.py.exp.md
   - スレッド返信の実装仕様
   - :eyes: リアクション付与の仕様（`_try_add_eyes_reaction`）
@@ -100,6 +101,7 @@
   - MCP ツール自動ロードフロー（`uv --directory` による stdio 接続 / langchain_mcp_adapters 経由）
   - 失敗時のエラー仕様（RuntimeError・フォールバック無し / ツール 0 件 / アダプタ未導入 / パス不正 / スクリプト不存在）
   - invoke_agent の仕様
+  - Semche 検索利用ポリシー
 - AGENTS.md
   - Phase 4更新方針（この内容）
 - story/\*.md

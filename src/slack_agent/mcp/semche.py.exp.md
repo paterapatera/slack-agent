@@ -42,6 +42,7 @@ Semche MCP サーバー（ローカル stdio 接続）に対する薄いクラ�
 
 ## 依存/関連ファイルのパス一覧
 
-- 呼び出し元ツール: `src/slack_agent/tools/semche.py`
-- エージェント組み込み: `src/slack_agent/agent.py`
+- LangChain 自動ロード (MCP): `src/slack_agent/agent.py` 内 `load_mcp_tools_once`
 - OpenAI 設定: `src/slack_agent/config.py`
+- Semche MCP クライアント本体: `src/slack_agent/mcp/semche.py` (本ファイル)
+  - ローカル wrapper (`tools/semche.py`) は削除済み。MCP ツールのみを利用します。
