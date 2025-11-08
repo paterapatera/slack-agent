@@ -37,16 +37,22 @@ LangChain Agents API（`create_agent`）を用いて、Slack 応答用のエー�
 - `load_mcp_tools_once()` でツール群を取得しエージェントに登録（失敗時は例外が伝播し起動失敗）。
 - エージェントグラフを生成して返します（`_agent_lock` と `_agent_graph` によるメモ化で 1 インスタンスをキャッシュ）。
 
-### `invoke_agent(question: str) -> str` (非同期)
+### `invoke_agent(question: str, history: list[dict[str, Any]] | None = None) -> str` (非同期)
 
-- `get_agent_graph()` でエージェントグラフを取得し、`ainvoke` で `{"messages": [{"role": "user", "content": question}]}` を渡して実行。
+- `get_agent_graph()` でエージェントグラフを取得し、`ainvoke` で `{"messages": [...]}` を渡して実行。
+- **履歴対応**: `history` パラメータでスレッド会話履歴を受け取り、LangChain messages 形式に変換。
+  - 各メッセージの `bot_id` 有無で role を判定（bot_id あり→assistant、なし→user）
+  - 履歴テキストにも `clean_mention_text` を適用してメンション表記を正規化
+  - 最後に現在の質問を user として追加
 - 返却された `state["messages"]` の末尾が `AIMessage` であれば `content` を取り出し、文字列で返します。
 - 例外はログ出力の上で再送出します。
+- **互換性**: history なしの呼び出しにも対応（旧シグネチャ互換）
 
 ## 仕様（簡易コントラクト）
 
 - 入力
   - `question: str`（Slack からのメッセージ本文。mentions は `clean_mention_text` 側で除去済み）
+  - `history: list[dict[str, Any]] | None`（オプション。Slack conversations.replies で取得したメッセージ辞書配列）
 - 出力
   - `str`（最終的に Slack へ返信する本文）
 - エラー
@@ -98,3 +104,4 @@ LangChain Agents API（`create_agent`）を用いて、Slack 応答用のエー�
 - `AIMessage`: `langchain_core.messages`
 - `ClientSession`, `stdio_client`, `StdioServerParameters`: `mcp` / `mcp.client.stdio`
 - `load_mcp_tools` (遅延 import): `langchain_mcp_adapters.tools`
+- `clean_mention_text`: `src/slack_agent/text.py`（履歴テキスト整形用）

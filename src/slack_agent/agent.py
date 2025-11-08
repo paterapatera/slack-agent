@@ -14,6 +14,7 @@ from mcp.client.stdio import StdioServerParameters, stdio_client
 from pydantic import SecretStr
 
 from .config import OpenAISettings
+from .text import clean_mention_text
 
 logger = logging.getLogger(__name__)
 
@@ -243,6 +244,8 @@ async def get_agent_graph() -> Any:
             "社内情報(仕様/コード/ドキュメント)や社内業務情報に関する質問では検索ツールの利用を検討。"
             "公開一般や基礎的質問ではツールを使わず直接回答。"
             "検索ツール利用時は include_documents=True, max_content_length=None (全文取得) を推奨。"
+            "`file_type`は`実装内容`、`コード`、`JIRA`が指定できます。実装内容はコードを要約した日本語ドキュメントです。"
+            "`実装内容`のファイル名はコードのファイル名の後ろに.exp.mdをつけたものです。"
             "取得本文は要約・引用で必要部分のみ提示。"
         )
 
@@ -254,12 +257,32 @@ async def get_agent_graph() -> Any:
         return _agent_graph
 
 
-async def invoke_agent(question: str) -> str:
-    """Agents API 経由で質問を投げ、最終出力文字列を返します。"""
+async def invoke_agent(question: str, history: list[dict[str, Any]] | None = None) -> str:
+    """Agents API 経由で質問を投げ、最終出力文字列を返します。
+
+    Parameters
+    - question: 現在のユーザーからの質問（メンション本文クリーニング済み）
+    - history: Slack conversations.replies で取得したメッセージ辞書の配列（任意）
+    """
     graph = await get_agent_graph()
     try:
+        # Slack履歴をLangChainのmessagesへ粗くマッピング
+        lc_messages: list[dict[str, str]] = []
+        if history:
+            for msg in history:
+                raw = str(msg.get("text", "")).strip()
+                text = clean_mention_text(raw) if raw else ""
+                if not text:
+                    continue
+                # bot_idがあればassistant扱い、なければuser扱い（簡易規則）
+                role = "assistant" if msg.get("bot_id") else "user"
+                lc_messages.append({"role": role, "content": text})
+
+        # 最後に今回の質問を追加（ユーザーメッセージ）
+        lc_messages.append({"role": "user", "content": question})
+
         state = await graph.ainvoke({
-            "messages": [{"role": "user", "content": question}],
+            "messages": lc_messages,
         })
         messages = state.get("messages", [])
         answer_text = None

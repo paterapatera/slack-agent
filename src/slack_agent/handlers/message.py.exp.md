@@ -2,13 +2,17 @@
 
 `app_mention` イベントを処理するハンドラーを登録します。Bot がメンションされた際、メッセージの先頭のメンション（`<@U...>`）を取り除き、残りのテキストを LangChain のエージェント（OpenAI gpt-5-nano）に渡して応答を生成し、スレッドに返信します。テキストが空の場合は `(no message)` が渡されます。さらに応答生成に入る前に対象メッセージへ `:eyes:` リアクションを付与し、ユーザーへ「処理中」であることを即時にフィードバックします。リアクション付与が失敗しても（`missing_scope` / `already_reacted` / `ratelimited` / 想定外エラー）本処理は継続されます。
 
+**スレッド会話履歴対応**: メンションがスレッド内にある場合、`conversations.replies` API でスレッド履歴を取得しエージェントに文脈として渡します。履歴件数は環境変数 `SLACK_HISTORY_LIMIT` で調整可能（デフォルト10、1〜50に正規化）。履歴取得失敗時は警告ログを出力し、履歴なしで応答を継続します。
+
 ## 主な関数
 
 返信時は `thread_ts` を指定し、元メッセージのスレッド内に返信します。
 スレッド外からメンションされた場合は、そのメッセージを起点に新規スレッドとして返信します。
 
 - `register(app: App) -> None`
-  - 渡された `App` に対して `app_mention` イベントハンドラーを登録します。受信テキストを整形後、応答生成前に `:eyes:` リアクション追加（`_try_add_eyes_reaction`）を試み、続いて `slack_agent.agent.invoke_agent()` を呼び出して応答を取得し、スレッドに返信します。
+  - 渡された `App` に対して `app_mention` イベントハンドラーを登録します。受信テキストを整形後、応答生成前に `:eyes:` リアクション追加（`_try_add_eyes_reaction`）を試み、スレッド履歴を取得（`fetch_thread_history`）、続いて `slack_agent.agent.invoke_agent()` を呼び出して応答を取得し、スレッドに返信します。
+- `fetch_thread_history(channel: str, thread_ts: str, limit: int = 10) -> list[dict[str, Any]]`
+  - 内部ヘルパー。`conversations.replies` API でスレッド履歴を取得し、直近 limit 件のみ返却。現在のイベント `ts` と一致するメッセージは除外して二重投入を防止。取得失敗時は空リストを返却。
 - `_try_add_eyes_reaction(app: App, event: Mapping[str, Any]) -> None`
   - 内部ヘルパー。`channel` と `ts` が存在すれば `reactions.add` API を呼び出して `:eyes:` を付与。SlackApiError のエラーコード別にログレベルを調整し、失敗しても例外を外へ伝播しない。
 
@@ -16,6 +20,17 @@
 
 - 入力: Slack イベントペイロード（`event`）、`say`
 - 出力: エージェントの応答テキスト、スレッド内返信（thread_ts指定）
+- スレッド履歴: `conversations.replies` で取得（環境変数 `SLACK_HISTORY_LIMIT` で件数調整、デフォルト10）
+
+## スレッド会話履歴取得仕様
+
+- **取得タイミング**: メンション受信時、thread_ts が存在する場合
+- **API**: `conversations.replies(channel, ts, limit)`
+- **件数制限**: 環境変数 `SLACK_HISTORY_LIMIT`（デフォルト10、1〜50に正規化）
+- **重複除外**: 現在のイベント `ts` と一致するメッセージを除外して二重投入防止
+- **メンション整形**: 履歴内の各メッセージも `clean_mention_text` で処理
+- **エラー時**: 警告ログ出力、空リスト返却で応答継続
+- **ログ出力**: 取得件数のみ記録（履歴本文は非出力、情報漏洩防止）
 
 ## コード内で利用しているクラス/関数のモジュールパス一覧
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 import atexit
 import contextlib
 import logging
@@ -94,6 +95,18 @@ def _run_in_background(coro: Coroutine[Any, Any, T]) -> T:  # noqa: UP047 - 単�
 
 
 def register(app: App) -> None:
+    def fetch_thread_history(channel: str, thread_ts: str, limit: int = 10) -> list[dict[str, Any]]:
+        """指定スレッドの履歴をSlack APIで取得し、直近limit件のみ返す。失敗時は空リスト。"""
+        try:
+            response = app.client.conversations_replies(channel=channel, ts=thread_ts, limit=limit)
+            msgs: list[Any] = response.get("messages", [])  # mypy: arbitrary JSON-like
+            # 型安全にキャスト（mypy用）。Slack SDKは任意型を返すため保守的にフィルタ
+            messages: list[dict[str, Any]] = [m for m in msgs if isinstance(m, dict)]
+            # スレッドの時系列順で直近limit件のみ返す
+            return messages[-limit:] if len(messages) > limit else messages
+        except Exception as e:
+            logger.warning(f"Failed to fetch thread history: {e}")
+            return []
     """`app_mention` イベントのハンドラーを登録します。"""
     logger = logging.getLogger("slack_agent.handlers.message")
 
@@ -129,6 +142,22 @@ def register(app: App) -> None:
         cleaned = clean_mention_text(text)
         # スレッド返信にする: 返信先の thread_ts は既存の thread_ts または元メッセージの ts
         thread_ts = event.get("thread_ts") or event.get("ts")
+        channel = event.get("channel")
+        # スレッド履歴を取得
+        history: list[dict[str, Any]] = []
+        if channel and thread_ts:
+            # 環境変数で取得件数を調整（デフォルト10）
+            raw_limit = os.getenv("SLACK_HISTORY_LIMIT", "10")
+            try:
+                limit = max(1, min(50, int(raw_limit)))
+            except Exception:
+                limit = 10
+            history = fetch_thread_history(channel, thread_ts, limit=limit)
+            # 直近イベント（現在のメッセージ）が含まれている場合は除外して二重投入を防ぐ
+            current_ts = event.get("ts")
+            if current_ts:
+                history = [m for m in history if m.get("ts") != current_ts]
+        logger.info("Fetched thread history: %d messages", len(history))
         logger.info(
             "app_mention received: text=%r cleaned=%r thread_ts=%r",
             text,
@@ -141,7 +170,12 @@ def register(app: App) -> None:
 
         try:
             # エージェントに質問を投げて応答を取得（永続ループ上で実行）
-            answer = _run_in_background(invoke_agent(cleaned))
+            # 履歴も渡す（今後の拡張で利用）。ただし古いシグネチャ互換のためフォールバックあり。
+            try:
+                answer = _run_in_background(invoke_agent(cleaned, history=history))
+            except TypeError:
+                # 旧版のinvoke_agent(question: str)のみのモック等に対応
+                answer = _run_in_background(invoke_agent(cleaned))
             logger.info("Agent answer: %r", answer)
 
             # 応答をスレッドに返信
