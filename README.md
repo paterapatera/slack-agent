@@ -77,7 +77,7 @@ uv run -m slack_agent.bot
 
 ### Semche MCP 連携（検索ツール自動ロード）
 
-エージェントは MCP（Model Context Protocol）経由で Semche の検索・リストなどのツール群を **自動ロード** して利用します。初回呼び出し時に stdio 接続でサーバーを起動し、ツール一覧を LangChain Tool に変換して登録します。2 回目以降はキャッシュを使用し再接続しません。
+エージェントは MCP（Model Context Protocol）経由で Semche の検索・リストなどのツール群を **自動ロード** して利用します。初回呼び出し時に stdio 接続で Semche MCP サーバーを起動し、ツール一覧を LangChain Tool に変換して登録します。2 回目以降はキャッシュを使用し再接続しません。接続はプロセス存続期間中維持され、終了時に自動クローズされます（フォールバック無し）。
 
 #### 必須/任意の環境変数（`.env`）
 
@@ -87,11 +87,12 @@ uv run -m slack_agent.bot
 | `MCP_SEMCHE_TIMEOUT` | 任意 | 接続・ツール取得のタイムアウト秒（デフォルト 10）。                                |
 | `SEMCHE_CHROMA_DIR`  | 任意 | Semche サーバプロセスへ引き渡す Chroma DB ディレクトリ。                           |
 
-#### 起動方法（内部）
+#### 起動・永続化方法（内部）
 
-- `uv run --directory <MCP_SEMCHE_PATH> python src/semche/mcp_server.py` を使用し stdio セッションを開始
-- `langchain_mcp_adapters.tools.load_mcp_tools` で MCP 側ツールを LangChain Tool オブジェクトへ変換
-- タイムアウトは `safe_timeout = max(1, MCP_SEMCHE_TIMEOUT)` に正規化
+1. `uv run --directory <MCP_SEMCHE_PATH> python src/semche/mcp_server.py` を使用し stdio セッションを開始（`src/semche/mcp_server.py` が存在必須）。
+2. `ClientSession.initialize()` をタイムアウト（`safe_timeout = max(1, MCP_SEMCHE_TIMEOUT)`）付きで完了させる。
+3. `langchain_mcp_adapters.tools.load_mcp_tools` で MCP 側ツールを LangChain Tool オブジェクトへ変換。
+4. ツールとセッションはシングルトン `MCPConnectionManager` にキャッシュされ、プロセス終了時 `atexit` でクリーンにクローズ。
 
 #### エラー仕様（フォールバック無し）
 
@@ -108,8 +109,9 @@ uv run -m slack_agent.bot
 
 #### 注意
 
-- 現状 stdio 接続のみ対応（URL/TCP/WebSocket 未対応）
-- 接続はプロセス内で 1 回のみ行われます（メモ化）
+- 現状 stdio 接続のみ対応（URL/TCP/WebSocket 未対応）。
+- 接続とセッションはプロセス内で 1 回のみ初期化され維持されます（永続セッション + ツールメモ化）。
+- 失敗時はリソースをクリーンアップし再試行可能ですが、成功するまでフォールバック動作（手動定義ツール）はありません。
 
 内部実装の詳細は `src/slack_agent/agent.py.exp.md` を参照してください。
 

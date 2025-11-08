@@ -52,9 +52,9 @@ async def test_load_mcp_tools_once_success() -> None:
         import sys
 
         sys.modules["langchain_mcp_adapters.tools"].load_mcp_tools = fake_load_mcp_tools
-
-        # キャッシュクリア（他テストの影響回避）
+        # キャッシュ/永続セッションのクリア（他テストの影響回避）
         agent_mod._cached_tools = None
+        await agent_mod._mcp_manager.close()
 
         # act
         tools = await agent_mod.load_mcp_tools_once()
@@ -82,9 +82,9 @@ async def test_load_mcp_tools_once_failure_no_path() -> None:
         import sys
 
         sys.modules["langchain_mcp_adapters.tools"].load_mcp_tools = fake_load_mcp_tools
-
-        # キャッシュクリア
+        # キャッシュ/永続セッションのクリア
         agent_mod._cached_tools = None
+        await agent_mod._mcp_manager.close()
 
         # act & assert
         with pytest.raises(RuntimeError, match="MCP_SEMCHE_PATH が未設定"):
@@ -135,9 +135,9 @@ async def test_load_mcp_tools_once_memoization() -> None:
         import sys
 
         sys.modules["langchain_mcp_adapters.tools"].load_mcp_tools = fake_load_mcp_tools
-
-        # キャッシュクリア
+        # キャッシュ/永続セッションのクリア
         agent_mod._cached_tools = None
+        await agent_mod._mcp_manager.close()
 
         # act: 1回目
         tools1 = await agent_mod.load_mcp_tools_once()

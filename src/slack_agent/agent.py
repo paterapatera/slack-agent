@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import atexit
 import logging
 import os
 from typing import Any
@@ -21,6 +22,146 @@ _tools_lock = asyncio.Lock()
 _cached_tools: list[Any] | None = None
 
 
+class MCPConnectionManager:
+    """永続 MCP セッションをプロセス内で 1 回だけ開始・保持するシングルトン。
+
+    - stdio_client と ClientSession を手動で __aenter__ し、__aexit__ はプロセス終了時に実行。
+    - LangChain 用の工具（tools）は初回に取得してキャッシュ。
+    - 既存のモジュールレベルキャッシュ（_cached_tools）との互換を維持するため、
+      load_mcp_tools_once() 側で _cached_tools をセットする。
+    """
+
+    def __init__(self) -> None:
+        self._lock = asyncio.Lock()
+        self._started: bool = False
+        self._stdio_cm: Any | None = None
+        self._session_cm: Any | None = None
+        self._session: ClientSession | None = None
+        self._tools: list[Any] | None = None
+
+    async def ensure_started(self) -> None:
+        if self._started:
+            return
+        async with self._lock:
+            if self._started:
+                return
+
+            try:
+                # 遅延 import（依存未導入時のメッセージをわかりやすくする）
+                from langchain_mcp_adapters.tools import load_mcp_tools  # noqa: F401
+            except Exception as e:  # noqa: BLE001
+                logger.error("langchain_mcp_adapters が見つかりません: %s", e)
+                raise RuntimeError(
+                    "langchain_mcp_adapters が未導入のため MCP ツールの自動ロードに失敗しました"
+                ) from e
+
+            # 接続先（Semche MCP サーバ）: 環境変数を利用
+            path = os.getenv("MCP_SEMCHE_PATH", "")
+            if not path:
+                raise RuntimeError("MCP_SEMCHE_PATH が未設定のため MCP 接続を開始できません")
+
+            timeout = int(os.getenv("MCP_SEMCHE_TIMEOUT", 10))
+            safe_timeout = max(1, timeout)
+
+            chroma_dir = os.getenv("SEMCHE_CHROMA_DIR")
+            env = dict(os.environ)
+            if chroma_dir:
+                env["SEMCHE_CHROMA_DIR"] = chroma_dir
+
+            if not os.path.isdir(path):
+                raise RuntimeError(f"MCP_SEMCHE_PATH はディレクトリを指定してください: {path}")
+
+            work_dir = os.path.abspath(path)
+            server_rel = "src/semche/mcp_server.py"
+            server_full = os.path.join(work_dir, server_rel)
+            if not os.path.exists(server_full):
+                raise RuntimeError(f"MCP サーバースクリプトが見つかりません: {server_full}")
+
+            params = StdioServerParameters(
+                command="uv",
+                args=["run", "--directory", work_dir, "python", server_rel],
+                env=env,
+            )
+
+            # context manager を手動でオープンし保持（クローズは close() で）
+            try:
+                self._stdio_cm = stdio_client(params)
+                read, write = await self._stdio_cm.__aenter__()
+                self._session_cm = ClientSession(read, write)
+                self._session = await self._session_cm.__aenter__()
+
+                await asyncio.wait_for(self._session.initialize(), timeout=safe_timeout)
+
+                # ツール取得（実体は load_mcp_tools を load_mcp_tools_once で呼ぶ）
+                # ここではセッション有効化までを担当。ツールの取得は呼び出し元で行う。
+                self._started = True
+            except Exception:
+                # 途中まで開いた場合はクリーンアップを試みる
+                await self._safe_close()
+                self._started = False
+                raise
+
+    async def _safe_close(self) -> None:
+        try:
+            if self._session_cm is not None:
+                await self._session_cm.__aexit__(None, None, None)
+        except Exception:  # noqa: BLE001
+            pass
+        finally:
+            self._session_cm = None
+            self._session = None
+
+        try:
+            if self._stdio_cm is not None:
+                await self._stdio_cm.__aexit__(None, None, None)
+        except Exception:  # noqa: BLE001
+            pass
+        finally:
+            self._stdio_cm = None
+
+    async def close(self) -> None:
+        await self._safe_close()
+        self._tools = None
+        self._started = False
+        # モジュールキャッシュもクリアして再初期化を許可
+        global _cached_tools
+        _cached_tools = None
+
+    @property
+    def session(self) -> ClientSession | None:
+        return self._session
+
+    def set_tools(self, tools: list[Any]) -> None:
+        self._tools = tools
+
+    def get_tools(self) -> list[Any]:
+        if self._tools is None:
+            raise RuntimeError("MCP ツールが初期化されていません")
+        return self._tools
+
+
+_mcp_manager = MCPConnectionManager()
+
+
+def _register_atexit_close() -> None:
+    def _close_sync() -> None:
+        try:
+            # 可能なら新しいイベントループでクローズを実行
+            loop = asyncio.new_event_loop()
+            try:
+                loop.run_until_complete(_mcp_manager.close())
+            finally:
+                loop.close()
+        except Exception:
+            # ベストエフォート。終了時例外は握りつぶす。
+            pass
+
+    atexit.register(_close_sync)
+
+
+_register_atexit_close()
+
+
 async def load_mcp_tools_once() -> list[Any]:
     """MCP セッションから LangChain Tool 群を一度だけ自動ロードして返す。
 
@@ -38,8 +179,10 @@ async def load_mcp_tools_once() -> list[Any]:
         if _cached_tools is not None:
             return _cached_tools
 
+        # 永続セッションが未開始であれば開始
+        await _mcp_manager.ensure_started()
+
         try:
-            # import は遅延評価にし、未導入時でもモジュール import エラーを回避
             from langchain_mcp_adapters.tools import load_mcp_tools
         except Exception as e:  # noqa: BLE001
             logger.error("langchain_mcp_adapters が見つかりません: %s", e)
@@ -47,43 +190,15 @@ async def load_mcp_tools_once() -> list[Any]:
                 "langchain_mcp_adapters が未導入のため MCP ツールの自動ロードに失敗しました"
             ) from e
 
-        # 接続先（Semche MCP サーバ）: 環境変数を利用（既存実装と同等）
-        path = os.getenv("MCP_SEMCHE_PATH", "")
-        if not path:
-            raise RuntimeError("MCP_SEMCHE_PATH が未設定のため MCP 接続を開始できません")
+        session = _mcp_manager.session
+        if session is None:
+            raise RuntimeError("MCP セッションが初期化されていません")
 
         timeout = int(os.getenv("MCP_SEMCHE_TIMEOUT", 10))
         safe_timeout = max(1, timeout)
 
-        chroma_dir = os.getenv("SEMCHE_CHROMA_DIR")
-        env = dict(os.environ)
-        if chroma_dir:
-            env["SEMCHE_CHROMA_DIR"] = chroma_dir
-
-        # MCP_SEMCHE_PATH は Semche リポジトリのルートディレクトリを想定
-        if not os.path.isdir(path):
-            raise RuntimeError(f"MCP_SEMCHE_PATH はディレクトリを指定してください: {path}")
-
-        # uv の実行ディレクトリを Semche 側プロジェクトルートに合わせる
-        work_dir = os.path.abspath(path)
-        server_rel = "src/semche/mcp_server.py"
-        server_full = os.path.join(work_dir, server_rel)
-        if not os.path.exists(server_full):
-            raise RuntimeError(f"MCP サーバースクリプトが見つかりません: {server_full}")
-
-        # --directory で作業ディレクトリを切り替えるため、起動は相対パスで十分
-        params = StdioServerParameters(
-            command="uv",
-            args=["run", "--directory", work_dir, "python", server_rel],
-            env=env,
-        )
-
         try:
-            async with stdio_client(params) as (read, write):  # noqa: SIM117
-                async with ClientSession(read, write) as session:
-                    await asyncio.wait_for(session.initialize(), timeout=safe_timeout)
-                    # 実体の Tool 群をアダプタで LangChain Tool へ変換
-                    tools = await asyncio.wait_for(load_mcp_tools(session), timeout=safe_timeout)
+            tools = await asyncio.wait_for(load_mcp_tools(session), timeout=safe_timeout)
         except Exception as e:  # noqa: BLE001
             logger.error("MCP ツールの自動ロード中に失敗しました: %s", e, exc_info=True)
             raise RuntimeError("MCP ツールの自動ロードに失敗しました") from e
@@ -91,7 +206,9 @@ async def load_mcp_tools_once() -> list[Any]:
         if not tools:
             raise RuntimeError("MCP から取得できるツールが 0 件でした")
 
-        _cached_tools = list(tools)
+        tool_list = list(tools)
+        _mcp_manager.set_tools(tool_list)
+        _cached_tools = tool_list
         logger.info("MCP ツールを %d 件ロードしました", len(_cached_tools))
         return _cached_tools
 

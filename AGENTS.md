@@ -116,7 +116,7 @@ README.md には以下を必ず含めること（変更時は網羅性を再確�
 5. 実行方法: `uv run slack-agent` と `uv run -m slack_agent.bot`。
 6. OpenAI 説明: デフォルト `gpt-5-nano` / 予算上限は Usage limits で管理。
 7. スレッド返信仕様: thread_ts 維持 / 新規スレッド開始条件 / `:eyes:` リアクション事前付与と失敗時継続ポリシー（already_reacted / missing_scope / ratelimited）。
-8. Semche MCP 自動ロード: 目的（初回のみ接続・ツールキャッシュ）/ 環境変数テーブル (`MCP_SEMCHE_PATH` ディレクトリ必須, `MCP_SEMCHE_TIMEOUT`, `SEMCHE_CHROMA_DIR`) / 起動コマンド `uv run --directory <MCP_SEMCHE_PATH> python src/semche/mcp_server.py` / timeout 正規化 (`safe_timeout`) / メモ化 / フォールバック無し / エラー表（未設定・非ディレクトリ・スクリプト不存在・アダプタ未導入・初期化失敗・ツール0件） / stdioのみ対応。
+8. Semche MCP 自動ロード: 目的（初回のみ接続・ツールキャッシュ・永続セッション維持）/ 環境変数テーブル (`MCP_SEMCHE_PATH` ディレクトリ必須, `MCP_SEMCHE_TIMEOUT`, `SEMCHE_CHROMA_DIR`) / 起動コマンド `uv run --directory <MCP_SEMCHE_PATH> python src/semche/mcp_server.py` / timeout 正規化 (`safe_timeout`) / 永続セッション（シングルトン保持・`atexit` クローズ）/ フォールバック無し / エラー表（未設定・非ディレクトリ・スクリプト不存在・アダプタ未導入・初期化失敗・ツール0件） / stdioのみ対応。
 9. 開発ツール（任意）: ruff / mypy 導入と実行コマンド例。
 10. テスト / Lint / 型チェック実行方法: `uv run pytest` / `uv run ruff check . --fix` / `uv run mypy src`。
 11. 参照: 詳細は `src/slack_agent/agent.py.exp.md` などへのリンク。

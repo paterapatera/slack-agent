@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import asyncio
+import atexit
 import logging
+import threading
 from collections.abc import Mapping
-from typing import Any
+from typing import Any, Awaitable, Callable, TypeVar
 
 from slack_bolt import App
 from slack_bolt.context.say.say import Say
@@ -24,6 +26,72 @@ except Exception:  # pragma: no cover - インポート失敗はまれ
 
 from ..agent import invoke_agent
 from ..text import clean_mention_text
+
+
+# --- 背景イベントループ（永続）で非同期関数を実行する仕組み ------------------------
+# Slack Bolt の同期ハンドラー内で asyncio.run() を使うと、処理後にイベントループが
+# クローズされ、そこで生成された MCP セッションの下層ストリームも閉じられてしまう。
+# これを避けるため、プロセス中に存続する専用のイベントループを別スレッドで動かし、
+# そのループ上でエージェント実行を行う。
+
+_bg_loop: asyncio.AbstractEventLoop | None = None
+_bg_thread: threading.Thread | None = None
+_bg_ready = threading.Event()
+
+
+def _start_background_loop() -> None:
+    global _bg_loop, _bg_thread
+    if _bg_loop is not None:
+        return
+
+    def _runner() -> None:
+        loop = asyncio.new_event_loop()
+        try:
+            asyncio.set_event_loop(loop)
+            # 共有参照をセットしてから run_forever
+            global _bg_loop
+            _bg_loop = loop
+            _bg_ready.set()
+            loop.run_forever()
+        finally:
+            # ループ停止時のクローズ
+            try:
+                loop.close()
+            except Exception:  # noqa: BLE001
+                pass
+
+    t = threading.Thread(target=_runner, name="slack-agent-bg-loop", daemon=True)
+    _bg_thread = t
+    t.start()
+    _bg_ready.wait(timeout=5)
+
+
+def _stop_background_loop() -> None:
+    global _bg_loop
+    loop = _bg_loop
+    if loop is None:
+        return
+    try:
+        loop.call_soon_threadsafe(loop.stop)
+    except Exception:  # noqa: BLE001
+        pass
+    finally:
+        _bg_loop = None
+
+
+atexit.register(_stop_background_loop)
+
+
+T = TypeVar("T")
+
+
+def _run_in_background(coro: Awaitable[T]) -> T:
+    """永続イベントループでコルーチンを同期的に実行して結果を返す。"""
+    if _bg_loop is None:
+        _start_background_loop()
+    assert _bg_loop is not None  # for type checker
+    fut = asyncio.run_coroutine_threadsafe(coro, _bg_loop)
+    return fut.result()
 
 
 def register(app: App) -> None:
@@ -73,9 +141,8 @@ def register(app: App) -> None:
         _try_add_eyes_reaction(app, event)
 
         try:
-            # エージェントに質問を投げて応答を取得
-            # asyncio.run() で非同期関数を同期的に実行
-            answer = asyncio.run(invoke_agent(cleaned))
+            # エージェントに質問を投げて応答を取得（永続ループ上で実行）
+            answer = _run_in_background(invoke_agent(cleaned))
             logger.info("Agent answer: %r", answer)
 
             # 応答をスレッドに返信
